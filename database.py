@@ -3,14 +3,22 @@ try:
     load_dotenv()
 except ImportError:
     pass
+
 import os
+import streamlit as st
 import shutil
 from datetime import datetime
 from supabase import create_client, ClientOptions
 
+# قراءة المفاتيح بأمان
+SUPABASE_URL = st.secrets.get("SUPABASE_URL", 
+               os.getenv("SUPABASE_URL", ""))
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", 
+               os.getenv("SUPABASE_KEY", ""))
+
 supabase = create_client(
-    "https://qzgnzscizfsghnpdipaa.supabase.co",
-    "sb_secret_FSalyJG1dYBYtTj6HzX5Ew_geNS2PLL",
+    SUPABASE_URL,
+    SUPABASE_KEY,
     options=ClientOptions(
         postgrest_client_timeout=10,
         storage_client_timeout=10,
