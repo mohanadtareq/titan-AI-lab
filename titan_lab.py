@@ -1,6 +1,9 @@
 import os
-from dotenv import load_dotenv
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 import requests
 from parameters import GOLDEN_PARAMETERS, SYSTEM_PROMPT
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
