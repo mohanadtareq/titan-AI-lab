@@ -1,19 +1,30 @@
-import os
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
-import requests
-from parameters import GOLDEN_PARAMETERS, SYSTEM_PROMPT
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-API_URL = "https://openrouter.ai/api/v1/chat/completions"
+SYSTEM_PROMPT = "You are an expert AI assistant specializing in scientific research and analysis."
 
-headers = {
-    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-    "Content-Type": "application/json"
-}
-
+def ask_model(question, model, room_context, room):
+    # قراءة المفتاح في كل مرة
+    api_key = st.secrets.get("OPENROUTER_API_KEY", 
+              os.getenv("OPENROUTER_API_KEY", ""))
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    history = get_history_for_api(room)
+    system = f"{SYSTEM_PROMPT}\n\n{room_context}"
+    data = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system},
+            *history,
+            {"role": "user", "content": question}
+        ]
+    }
+    response = requests.post(API_URL, headers=headers, json=data)
+    if response.status_code == 200:
+        return response.json()['choices'][0]['message']['content']
+    else:
+        return f"❌ خطأ {response.status_code}: {response.text}"
 def ask_claude(question):
     data = {
         "messages": [
