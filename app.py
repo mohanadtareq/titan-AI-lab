@@ -3,6 +3,7 @@ try:
     load_dotenv()
 except ImportError:
     pass
+
 import os
 import streamlit as st
 import requests
@@ -12,7 +13,6 @@ from database import (init_db, save_message, load_messages,
                       archive_room, restore_room,
                       get_history_for_api, get_backup_list,
                       restore_from_backup)
-OPENROUTER_API_KEY = st.secrets.get("OPENROUTER_API_KEY", os.getenv("OPENROUTER_API_KEY", ""))
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 headers = {
