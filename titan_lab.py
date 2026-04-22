@@ -1,5 +1,20 @@
-SYSTEM_PROMPT = "You are an expert AI assistant specializing in scientific research and analysis."
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
+import os
+import streamlit as st
+import requests
+from parameters import GOLDEN_PARAMETERS, SYSTEM_PROMPT
+from rooms import ROOMS
+from database import (init_db, save_message, load_messages,
+                      archive_room, restore_room,
+                      get_history_for_api, get_backup_list,
+                      restore_from_backup)
+
+API_URL = "https://openrouter.ai/api/v1/chat/completions"
 def ask_model(question, model, room_context, room):
     # قراءة المفتاح في كل مرة
     api_key = st.secrets.get("OPENROUTER_API_KEY", 
