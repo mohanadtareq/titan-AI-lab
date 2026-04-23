@@ -27,75 +27,74 @@ MODELS = {
 }
 
 init_db()
-def auto_research(goal, target_result, room_key, room_context, max_rounds=5):
-    """البحث التلقائي المتعدد الجولات"""
-    
-    # النماذج المجانية أولاً ثم المدفوعة
-    research_pipeline = [
-        ("qwen/qwen3.6-plus-04-02:free",        "🆓 Qwen — استكشاف"),
-        ("stepfun/step-3.5-flash:free",          "🆓 Step — بحث"),
-        ("deepseek/deepseek-v3.2-20251201",      "💰 DeepSeek — نمذجة"),
-        ("anthropic/claude-4.6-sonnet-20260217", "💰 Claude — نقد"),
-        ("xiaomi/mimo-v2-pro",                   "💰 MiMo — تقييم"),
-    ]
-    
-    accumulated_context = f"""
+# ━━━ البحث التلقائي المجاني ━━━
+FREE_PIPELINE = [
+    ("qwen/qwen3.6-plus-04-02:free",               "🆓 Qwen 3.6 — استكشاف"),
+    ("deepseek/deepseek-chat-v3-0324:free",         "🆓 DeepSeek — نمذجة"),
+    ("nvidia/llama-3.1-nemotron-ultra-253b-v1:free","🆓 Nemotron — تحليل عميق"),
+    ("stepfun/step-3.5-flash:free",                 "🆓 Step Flash — بحث"),
+    ("deepseek/deepseek-r1-zero:free",              "🆓 R1 Zero — تفكير منطقي"),
+]
+
+def run_auto_research(goal, target_result, room_context, max_rounds):
+    api_key = st.secrets.get("OPENROUTER_API_KEY",
+              os.getenv("OPENROUTER_API_KEY", ""))
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    accumulated = ""
+    pipeline = FREE_PIPELINE[:max_rounds]
+
+    for i, (model_id, model_label) in enumerate(pipeline):
+        round_num = i + 1
+
+        if round_num == 1:
+            task = "استكشف الفكرة وحدد كل المناهج الممكنة للوصول للهدف. استبعد الطرق غير الواعدة بوضوح."
+        elif round_num == 2:
+            task = "بناءً على الجولة السابقة، ابنِ نموذجاً رياضياً أولياً للمنهج الأقوى."
+        elif round_num == 3:
+            task = "حلّل النموذج الرياضي بعمق واكشف الثغرات وحسّنه."
+        elif round_num == 4:
+            task = "ابحث في الأدبيات العلمية عن أقرب الأبحاث الموجودة وقارنها بما توصلنا إليه."
+        else:
+            task = "قيّم كل ما سبق وقارنه بالهدف المستهدف. ما الذي تحقق وما الذي يحتاج مزيداً من العمل؟"
+
+        prompt = f"""
 RESEARCH GOAL: {goal}
 TARGET RESULT: {target_result}
 ROOM CONTEXT: {room_context}
 
-ابدأ البحث وحاول الاقتراب من النتيجة المستهدفة.
-في كل جولة، ابنِ على ما توصل إليه النموذج السابق.
-"""
-    
-    rounds_results = []
-    
-    for i, (model_id, model_label) in enumerate(research_pipeline[:max_rounds]):
-        round_num = i + 1
-        
-        prompt = f"""
-{accumulated_context}
-
 ━━━ الجولة {round_num} من {max_rounds} ━━━
-نتائج الجولات السابقة:
-{chr(10).join([f"جولة {j+1}: {r}" for j, r in enumerate(rounds_results)])}
+{f'ما توصلنا إليه حتى الآن:{chr(10)}{accumulated}' if accumulated else ''}
 
-مهمتك في هذه الجولة:
-{'استكشف الفكرة وحدد المناهج الممكنة' if round_num <= 2 else
- 'ابنِ نموذجاً رياضياً بناءً على ما سبق' if round_num == 3 else
- 'انقد النموذج وحسّنه' if round_num == 4 else
- 'قيّم النتيجة وقارنها بالهدف المستهدف'}
+مهمتك: {task}
 
-الهدف النهائي: {target_result}
+كن دقيقاً ومختصراً. ركز على ما يقرّبنا من الهدف.
 """
-        
-        api_key = st.secrets.get("OPENROUTER_API_KEY",
-                  os.getenv("OPENROUTER_API_KEY", ""))
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        response = requests.post(
-            API_URL,
-            headers=headers,
-            json={
-                "model": model_id,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ]
-            }
-        )
-        
-        if response.status_code == 200:
-            result = response.json()['choices'][0]['message']['content']
-        else:
-            result = f"❌ خطأ في {model_label}: {response.text[:100]}"
-        
-        rounds_results.append(result)
-        accumulated_context += f"\n\nجولة {round_num} ({model_label}):\n{result}"
-        
+
+        try:
+            response = requests.post(
+                API_URL,
+                headers=headers,
+                json={
+                    "model": model_id,
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt}
+                    ]
+                },
+                timeout=60
+            )
+            if response.status_code == 200:
+                result = response.json()['choices'][0]['message']['content']
+            else:
+                result = f"❌ خطأ {response.status_code}: {response.text[:150]}"
+        except Exception as e:
+            result = f"❌ انتهت المهلة أو خطأ: {str(e)[:100]}"
+
+        accumulated += f"\n\n[جولة {round_num} - {model_label}]:\n{result}"
         yield round_num, model_label, result
 def ask_model(question, model, room_context, room):
     api_key = st.secrets.get("OPENROUTER_API_KEY",
@@ -177,85 +176,72 @@ if "Graphene" in room_key:
         c3.metric("η",  f"{GOLDEN_PARAMETERS['eta']}%")
         c3.metric("Purcell", f"{GOLDEN_PARAMETERS['Purcell']:.2e}")
 
+# ━━━ واجهة البحث التلقائي ━━━
 st.divider()
-# ━━━ البحث التلقائي ━━━
 st.markdown("### 🔄 البحث التلقائي")
 
-auto_enabled = st.toggle("تفعيل البحث التلقائي", value=False)
+auto_enabled = st.toggle("تفعيل البحث التلقائي 🔬", value=False)
 
 if auto_enabled:
-    col_a, col_b = st.columns(2)
-    with col_a:
-        research_goal = st.text_area(
-            "🎯 الفكرة أو السؤال البحثي:",
-            placeholder="مثال: بناء معالج كمي بمليار كيوبت",
-            height=80
-        )
-    with col_b:
-        target_result = st.text_area(
-            "🏁 النتيجة المستهدفة:",
-            placeholder="مثال: T1 = T2 = 1 ثانية",
-            height=80
-        )
-    
-    max_r = st.slider("عدد الجولات", min_value=2, max_value=5, value=3)
-    
+    st.info("٥ نماذج مجانية ستعمل بالتسلسل لتقليل الطرق الخاطئة وتقريبك من الحل")
+
+    research_goal = st.text_area(
+        "🎯 الفكرة أو السؤال البحثي:",
+        placeholder="مثال: بناء معالج كمي بمليار كيوبت",
+        height=80
+    )
+
+    target_result = st.text_area(
+        "🏁 النتيجة المستهدفة:",
+        placeholder="مثال: T1 = T2 = 1 ثانية مع معمارية قابلة للتصنيع",
+        height=80
+    )
+
+    max_r = st.slider(
+        "عدد الجولات:",
+        min_value=2,
+        max_value=5,
+        value=3,
+        help="كل جولة = نموذج مجاني واحد يبني على السابق"
+    )
+
+    st.caption(f"النماذج: {' → '.join([label for _, label in FREE_PIPELINE[:max_r]])}")
+
     if st.button("🚀 ابدأ البحث التلقائي", type="primary"):
-        if research_goal and target_result:
+        if research_goal.strip() and target_result.strip():
             st.markdown("---")
             st.markdown("### 🔬 جلسة البحث التلقائي")
-            
-            for round_num, model_label, result in auto_research(
-                research_goal, target_result, 
-                room_key, current["context"], max_r
+            st.caption(f"الهدف: {target_result}")
+
+            progress = st.progress(0)
+
+            for round_num, model_label, result in run_auto_research(
+                research_goal, target_result,
+                current["context"], max_r
             ):
+                progress.progress(round_num / max_r)
+
                 with st.expander(
-                    f"الجولة {round_num} — {model_label}", 
+                    f"الجولة {round_num} — {model_label}",
                     expanded=True
                 ):
                     st.markdown(result)
-                
-                # حفظ كل جولة في قاعدة البيانات
+
                 save_message(
                     room_key, "user",
-                    f"[بحث تلقائي - جولة {round_num}] {research_goal}"
+                    f"[بحث تلقائي - جولة {round_num}/{max_r}] {research_goal}"
                 )
                 save_message(
-                    room_key, "assistant", result,
+                    room_key, "assistant",
+                    result,
                     model_label
                 )
-            
-            st.success("✅ اكتمل البحث التلقائي!")
+
+            progress.progress(1.0)
+            st.success(f"✅ اكتمل البحث التلقائي — {max_r} جولات")
+            st.balloons()
         else:
             st.warning("أدخل الفكرة والنتيجة المستهدفة أولاً")
-
-if messages:
-    for role, model, content, timestamp in messages:
-        if role == "user":
-            with st.chat_message("user"):
-                st.markdown(content)
-        else:
-            with st.chat_message("assistant"):
-                model_name = next((k for k, v in MODELS.items() if v == model), model)
-                st.caption(f"🤖 {model_name} — {timestamp[:16]}")
-                st.markdown(content)
-else:
-    st.info(f"ابدأ محادثتك في غرفة {room_key}")
-
-question = st.chat_input("اكتب سؤالك البحثي...")
-
-if question:
-    save_message(room_key, "user", question)
-    with st.chat_message("user"):
-        st.markdown(question)
-    selected_model_id = MODELS[st.session_state.selected_model]
-    with st.chat_message("assistant"):
-        with st.spinner("جاري التحليل..."):
-            answer = ask_model(question, selected_model_id, current["context"], room_key)
-        st.caption(f"🤖 {st.session_state.selected_model}")
-        st.markdown(answer)
-    save_message(room_key, "assistant", answer, selected_model_id)
-
 if messages:
     st.divider()
     col1, col2 = st.columns(2)
