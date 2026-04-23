@@ -18,12 +18,12 @@ API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 MODELS = {
     "MiMo V2 Pro (نقد جوهري)":           "xiaomi/mimo-v2-pro",
-    "Claude Sonnet 4.6 (تحليل أكاديمي)": "anthropic/claude-4.6-sonnet-20260217",
-    "Qwen 3.6 Plus 🆓 (نقد منهجي)":      "qwen/qwen3.6-plus-04-02:free",
+    "Claude Sonnet 4.6 (تحليل أكاديمي)": "anthropic/claude-sonnet-4.6",
+    "Qwen 3.6 Plus 🆓 (نقد منهجي)":      "qwen/qwen3.6-plus",
     "MiniMax M2.7 (ناقد صارم)":           "minimax/minimax-m2.7-20260318",
-    "DeepSeek V3.2 (حسابات)":             "deepseek/deepseek-v3.2-20251201",
+    "DeepSeek V3.2 (حسابات)":             "deepseek/deepseek-v3.2",
     "GPT-5.4 (صياغة أكاديمية)":           "openai/gpt-5.4",
-    "Gemini 3 Flash (بحث مراجع)":         "google/gemini-3-flash-preview-20251217",
+    "Google: Gemma 4 31B (بحث مراجع)":         "google/gemma-4-31b-it",
 }
 
 init_db()
