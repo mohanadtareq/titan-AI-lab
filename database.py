@@ -85,3 +85,52 @@ def get_backup_list():
 def restore_from_backup(backup_filename):
     """استعادة نسخة احتياطية"""
     pass
+    BACKUP_DIR = r"C:\Users\Lenovo\OneDrive\titan_backups"
+
+def auto_backup():
+    """نسخة احتياطية تلقائية على OneDrive عند كل تشغيل"""
+    try:
+        if not os.path.exists(DB_PATH):
+            return
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = f"{BACKUP_DIR}/titan_lab_{timestamp}.db"
+        shutil.copy2(DB_PATH, backup_path)
+        # احتفظ بآخر 10 نسخ فقط
+        backups = sorted([
+            f for f in os.listdir(BACKUP_DIR)
+            if f.endswith(".db")
+        ])
+        while len(backups) > 10:
+            os.remove(f"{BACKUP_DIR}/{backups.pop(0)}")
+    except Exception:
+        pass  # لا يوقف المختبر إذا فشل
+
+def get_backup_list():
+    """قائمة النسخ المحلية"""
+    try:
+        if not os.path.exists(BACKUP_DIR):
+            return []
+        return sorted([
+            f for f in os.listdir(BACKUP_DIR)
+            if f.endswith(".db")
+        ], reverse=True)
+    except Exception:
+        return []
+
+def restore_from_backup(filename):
+    """استعادة نسخة محلية"""
+    try:
+        backup_path = f"{BACKUP_DIR}/{filename}"
+        if os.path.exists(backup_path):
+            shutil.copy2(backup_path, DB_PATH)
+            return True
+        return False
+    except Exception:
+        return False
+        def init_db():
+    """تهيئة — النسخ الاحتياطي فقط عند التشغيل المحلي"""
+    try:
+        auto_backup()
+    except Exception:
+        pass

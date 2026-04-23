@@ -11,8 +11,8 @@ from parameters import GOLDEN_PARAMETERS, SYSTEM_PROMPT
 from rooms import ROOMS
 from database import (init_db, save_message, load_messages,
                       archive_room, restore_room,
-                      get_history_for_api, get_backup_list,
-                      restore_from_backup)
+                      get_history_for_api,
+                      get_backup_list, restore_from_backup)
 
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -152,10 +152,24 @@ with st.sidebar:
         "اختر النموذج:", list(MODELS.keys()), label_visibility="collapsed"
     )
     st.divider()
+with st.sidebar:
+    st.divider()
+    st.markdown("### 💾 النسخ الاحتياطية")
+    st.caption("تُحفظ تلقائياً على OneDrive عند تشغيل المختبر")
+
     backups = get_backup_list()
     if backups:
-        st.markdown("### 💾 النسخ الاحتياطية")
         st.caption(f"متاح: {len(backups)} نسخة")
+        selected_backup = st.selectbox(
+            "استعادة نسخة:",
+            backups,
+            label_visibility="collapsed"
+        )
+        if st.button("⏪ استعادة", use_container_width=True):
+            if restore_from_backup(selected_backup):
+                st.success("تم الاستعادة — أعد التشغيل")
+    else:
+        st.caption("تعمل عند تشغيل المختبر محلياً فقط")
     st.caption("The Super Team © 2026")
 
 current  = ROOMS[st.session_state.current_room]
