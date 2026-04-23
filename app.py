@@ -29,13 +29,12 @@ MODELS = {
 init_db()
 # ━━━ البحث التلقائي المجاني ━━━
 FREE_PIPELINE = [
-    ("qwen/qwen3.6-plus-04-02:free",               "🆓 Qwen 3.6 — استكشاف"),
-    ("deepseek/deepseek-chat-v3-0324:free",         "🆓 DeepSeek — نمذجة"),
-    ("nvidia/llama-3.1-nemotron-ultra-253b-v1:free","🆓 Nemotron — تحليل عميق"),
-    ("stepfun/step-3.5-flash:free",                 "🆓 Step Flash — بحث"),
-    ("deepseek/deepseek-r1-zero:free",              "🆓 R1 Zero — تفكير منطقي"),
+    ("deepseek/deepseek-chat-v3-0324:free",         "🆓 DeepSeek V3 — استكشاف"),
+    ("deepseek/deepseek-r1-zero:free",               "🆓 DeepSeek R1 — تفكير منطقي"),
+    ("nvidia/llama-3.1-nemotron-ultra-253b-v1:free", "🆓 Nemotron — تحليل عميق"),
+    ("meta-llama/llama-4-maverick:free",             "🆓 Llama 4 Maverick — بحث"),
+    ("qwen/qwen3-235b-a22b:free",                    "🆓 Qwen3 235B — نمذجة"),
 ]
-
 def run_auto_research(goal, target_result, room_context, max_rounds):
     api_key = st.secrets.get("OPENROUTER_API_KEY",
               os.getenv("OPENROUTER_API_KEY", ""))
