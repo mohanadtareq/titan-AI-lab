@@ -10,10 +10,10 @@ import shutil
 from datetime import datetime
 from supabase import create_client, ClientOptions
 
-# قراءة المفاتيح بأمان
-SUPABASE_URL = st.secrets.get("SUPABASE_URL", 
+# ━━━ إعداد Supabase ━━━
+SUPABASE_URL = st.secrets.get("SUPABASE_URL",
                os.getenv("SUPABASE_URL", ""))
-SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", 
+SUPABASE_KEY = st.secrets.get("SUPABASE_KEY",
                os.getenv("SUPABASE_KEY", ""))
 
 supabase = create_client(
@@ -24,12 +24,13 @@ supabase = create_client(
         storage_client_timeout=10,
     )
 )
-# ━━━ النسخ الاحتياطي المحلي (اختياري) ━━━
-BACKUP_DIR = "backups"
+
+# ━━━ مسار النسخ الاحتياطية المحلية ━━━
+BACKUP_DIR = r"C:\Users\Lenovo\OneDrive\titan_backups"
 
 def init_db():
-    """لا نحتاج إنشاء جدول — موجود في Supabase"""
-    pass
+    """تهيئة — نسخ احتياطي محلي عند التشغيل"""
+    auto_backup()
 
 def save_message(room, role, content, model=None):
     """حفظ رسالة في Supabase"""
@@ -73,30 +74,16 @@ def get_history_for_api(room):
     rows = load_messages(room)
     return [{"role": r, "content": c} for r, _, c, _ in rows]
 
-def get_backup_list():
-    """قائمة النسخ الاحتياطية المحلية"""
-    if not os.path.exists(BACKUP_DIR):
-        return []
-    return sorted([
-        f for f in os.listdir(BACKUP_DIR)
-        if f.endswith(".db")
-    ], reverse=True)
-
-def restore_from_backup(backup_filename):
-    """استعادة نسخة احتياطية"""
-    pass
-    BACKUP_DIR = r"C:\Users\Lenovo\OneDrive\titan_backups"
-
 def auto_backup():
-    """نسخة احتياطية تلقائية على OneDrive عند كل تشغيل"""
+    """نسخة احتياطية تلقائية على OneDrive — تعمل محلياً فقط"""
     try:
-        if not os.path.exists(DB_PATH):
+        db_path = "titan_lab.db"
+        if not os.path.exists(db_path):
             return
         os.makedirs(BACKUP_DIR, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_path = f"{BACKUP_DIR}/titan_lab_{timestamp}.db"
-        shutil.copy2(DB_PATH, backup_path)
-        # احتفظ بآخر 10 نسخ فقط
+        shutil.copy2(db_path, backup_path)
         backups = sorted([
             f for f in os.listdir(BACKUP_DIR)
             if f.endswith(".db")
@@ -104,10 +91,10 @@ def auto_backup():
         while len(backups) > 10:
             os.remove(f"{BACKUP_DIR}/{backups.pop(0)}")
     except Exception:
-        pass  # لا يوقف المختبر إذا فشل
+        pass
 
 def get_backup_list():
-    """قائمة النسخ المحلية"""
+    """قائمة النسخ الاحتياطية المحلية"""
     try:
         if not os.path.exists(BACKUP_DIR):
             return []
@@ -119,18 +106,12 @@ def get_backup_list():
         return []
 
 def restore_from_backup(filename):
-    """استعادة نسخة محلية"""
+    """استعادة نسخة احتياطية محلية"""
     try:
         backup_path = f"{BACKUP_DIR}/{filename}"
         if os.path.exists(backup_path):
-            shutil.copy2(backup_path, DB_PATH)
+            shutil.copy2(backup_path, "titan_lab.db")
             return True
         return False
     except Exception:
         return False
-        def init_db():
-    """تهيئة — النسخ الاحتياطي فقط عند التشغيل المحلي"""
-    try:
-        auto_backup()
-    except Exception:
-        pass
