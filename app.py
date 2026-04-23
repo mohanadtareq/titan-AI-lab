@@ -27,7 +27,76 @@ MODELS = {
 }
 
 init_db()
+def auto_research(goal, target_result, room_key, room_context, max_rounds=5):
+    """البحث التلقائي المتعدد الجولات"""
+    
+    # النماذج المجانية أولاً ثم المدفوعة
+    research_pipeline = [
+        ("qwen/qwen3.6-plus-04-02:free",        "🆓 Qwen — استكشاف"),
+        ("stepfun/step-3.5-flash:free",          "🆓 Step — بحث"),
+        ("deepseek/deepseek-v3.2-20251201",      "💰 DeepSeek — نمذجة"),
+        ("anthropic/claude-4.6-sonnet-20260217", "💰 Claude — نقد"),
+        ("xiaomi/mimo-v2-pro",                   "💰 MiMo — تقييم"),
+    ]
+    
+    accumulated_context = f"""
+RESEARCH GOAL: {goal}
+TARGET RESULT: {target_result}
+ROOM CONTEXT: {room_context}
 
+ابدأ البحث وحاول الاقتراب من النتيجة المستهدفة.
+في كل جولة، ابنِ على ما توصل إليه النموذج السابق.
+"""
+    
+    rounds_results = []
+    
+    for i, (model_id, model_label) in enumerate(research_pipeline[:max_rounds]):
+        round_num = i + 1
+        
+        prompt = f"""
+{accumulated_context}
+
+━━━ الجولة {round_num} من {max_rounds} ━━━
+نتائج الجولات السابقة:
+{chr(10).join([f"جولة {j+1}: {r}" for j, r in enumerate(rounds_results)])}
+
+مهمتك في هذه الجولة:
+{'استكشف الفكرة وحدد المناهج الممكنة' if round_num <= 2 else
+ 'ابنِ نموذجاً رياضياً بناءً على ما سبق' if round_num == 3 else
+ 'انقد النموذج وحسّنه' if round_num == 4 else
+ 'قيّم النتيجة وقارنها بالهدف المستهدف'}
+
+الهدف النهائي: {target_result}
+"""
+        
+        api_key = st.secrets.get("OPENROUTER_API_KEY",
+                  os.getenv("OPENROUTER_API_KEY", ""))
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(
+            API_URL,
+            headers=headers,
+            json={
+                "model": model_id,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt}
+                ]
+            }
+        )
+        
+        if response.status_code == 200:
+            result = response.json()['choices'][0]['message']['content']
+        else:
+            result = f"❌ خطأ في {model_label}: {response.text[:100]}"
+        
+        rounds_results.append(result)
+        accumulated_context += f"\n\nجولة {round_num} ({model_label}):\n{result}"
+        
+        yield round_num, model_label, result
 def ask_model(question, model, room_context, room):
     api_key = st.secrets.get("OPENROUTER_API_KEY",
               os.getenv("OPENROUTER_API_KEY", ""))
@@ -109,6 +178,56 @@ if "Graphene" in room_key:
         c3.metric("Purcell", f"{GOLDEN_PARAMETERS['Purcell']:.2e}")
 
 st.divider()
+# ━━━ البحث التلقائي ━━━
+st.markdown("### 🔄 البحث التلقائي")
+
+auto_enabled = st.toggle("تفعيل البحث التلقائي", value=False)
+
+if auto_enabled:
+    col_a, col_b = st.columns(2)
+    with col_a:
+        research_goal = st.text_area(
+            "🎯 الفكرة أو السؤال البحثي:",
+            placeholder="مثال: بناء معالج كمي بمليار كيوبت",
+            height=80
+        )
+    with col_b:
+        target_result = st.text_area(
+            "🏁 النتيجة المستهدفة:",
+            placeholder="مثال: T1 = T2 = 1 ثانية",
+            height=80
+        )
+    
+    max_r = st.slider("عدد الجولات", min_value=2, max_value=5, value=3)
+    
+    if st.button("🚀 ابدأ البحث التلقائي", type="primary"):
+        if research_goal and target_result:
+            st.markdown("---")
+            st.markdown("### 🔬 جلسة البحث التلقائي")
+            
+            for round_num, model_label, result in auto_research(
+                research_goal, target_result, 
+                room_key, current["context"], max_r
+            ):
+                with st.expander(
+                    f"الجولة {round_num} — {model_label}", 
+                    expanded=True
+                ):
+                    st.markdown(result)
+                
+                # حفظ كل جولة في قاعدة البيانات
+                save_message(
+                    room_key, "user",
+                    f"[بحث تلقائي - جولة {round_num}] {research_goal}"
+                )
+                save_message(
+                    room_key, "assistant", result,
+                    model_label
+                )
+            
+            st.success("✅ اكتمل البحث التلقائي!")
+        else:
+            st.warning("أدخل الفكرة والنتيجة المستهدفة أولاً")
 
 if messages:
     for role, model, content, timestamp in messages:
