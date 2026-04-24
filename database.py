@@ -48,12 +48,12 @@ def load_messages(room):
     result = supabase.table("messages") \
         .select("role, model, content, timestamp") \
         .eq("room", room) \
-        .eq("archived", 0) \
+        .neq("archived", 1) \
         .order("id") \
         .execute()
     return [(r["role"], r["model"], r["content"], r["timestamp"])
             for r in result.data]
-
+            
 def archive_room(room):
     """أرشفة محادثة غرفة"""
     supabase.table("messages") \
