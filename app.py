@@ -175,9 +175,8 @@ with st.sidebar:
 current  = ROOMS[st.session_state.current_room]
 room_key = st.session_state.current_room
 messages = load_messages(room_key)
-st.write(f"DEBUG: room='{room_key}' len={len(room_key)} msgs={len(messages)}")
-st.divider()
 
+st.divider()
 # ━━━ عرض المحادثة المحفوظة ━━━
 if messages:
     for role, model, content, timestamp in messages:
