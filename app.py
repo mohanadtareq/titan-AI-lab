@@ -175,6 +175,44 @@ with st.sidebar:
 current  = ROOMS[st.session_state.current_room]
 room_key = st.session_state.current_room
 messages = load_messages(room_key)
+st.write(f"DEBUG: room='{room_key}' len={len(room_key)} msgs={len(messages)}")
+st.divider()
+
+# ━━━ عرض المحادثة المحفوظة ━━━
+if messages:
+    for role, model, content, timestamp in messages:
+        if role == "user":
+            with st.chat_message("user"):
+                st.markdown(content)
+        else:
+            with st.chat_message("assistant"):
+                model_name = next(
+                    (k for k, v in MODELS.items() if v == model), model
+                )
+                st.caption(f"🤖 {model_name} — {timestamp[:16]}")
+                st.markdown(content)
+else:
+    st.info(f"ابدأ محادثتك في غرفة {room_key}")
+
+# ━━━ صندوق الإدخال ━━━
+question = st.chat_input("اكتب سؤالك البحثي...")
+
+if question:
+    save_message(room_key, "user", question)
+    with st.chat_message("user"):
+        st.markdown(question)
+    selected_model_id = MODELS[st.session_state.selected_model]
+    with st.chat_message("assistant"):
+        with st.spinner("جاري التحليل..."):
+            answer = ask_model(
+                question, selected_model_id,
+                current["context"], room_key
+            )
+        st.caption(f"🤖 {st.session_state.selected_model}")
+        st.markdown(answer)
+    save_message(room_key, "assistant", answer, selected_model_id)
+    st.rerun()
+
 # تأكد من تحديث البيانات عند كل تغيير
 if "last_room" not in st.session_state:
     st.session_state.last_room = room_key
