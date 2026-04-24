@@ -175,6 +175,12 @@ with st.sidebar:
 current  = ROOMS[st.session_state.current_room]
 room_key = st.session_state.current_room
 messages = load_messages(room_key)
+# تأكد من تحديث البيانات عند كل تغيير
+if "last_room" not in st.session_state:
+    st.session_state.last_room = room_key
+if st.session_state.last_room != room_key:
+    st.session_state.last_room = room_key
+    st.rerun()
 
 st.markdown(f"## {room_key}")
 st.caption(current["description"])
