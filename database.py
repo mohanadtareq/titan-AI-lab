@@ -24,14 +24,34 @@ supabase = create_client(
         storage_client_timeout=10,
     )
 )
-
 # ━━━ مسار النسخ الاحتياطية المحلية ━━━
 BACKUP_DIR = r"C:\Users\Lenovo\OneDrive\titan_backups"
 
+def auto_backup():
+    """نسخة احتياطية تلقائية على OneDrive — تعمل محلياً فقط"""
+    try:
+        db_path = "titan_lab.db"
+        if not os.path.exists(db_path):
+            return
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = f"{BACKUP_DIR}/titan_lab_{timestamp}.db"
+        shutil.copy2(db_path, backup_path)
+        backups = sorted([
+            f for f in os.listdir(BACKUP_DIR)
+            if f.endswith(".db")
+        ])
+        while len(backups) > 10:
+            os.remove(f"{BACKUP_DIR}/{backups.pop(0)}")
+    except Exception:
+        pass
+
 def init_db():
     """تهيئة — نسخ احتياطي محلي عند التشغيل"""
-    auto_backup()
-
+    try:
+        auto_backup()
+    except Exception:
+        pass
 def save_message(room, role, content, model=None):
     """حفظ رسالة في Supabase"""
     supabase.table("messages").insert({
@@ -53,7 +73,7 @@ def load_messages(room):
         .execute()
     return [(r["role"], r["model"], r["content"], r["timestamp"])
             for r in result.data]
-            
+
 def archive_room(room):
     """أرشفة محادثة غرفة"""
     supabase.table("messages") \
