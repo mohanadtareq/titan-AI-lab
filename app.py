@@ -29,11 +29,11 @@ MODELS = {
 init_db()
 # ━━━ البحث التلقائي المجاني ━━━
 FREE_PIPELINE = [
-    ("deepseek/deepseek-chat-v3-0324:free",         "🆓 DeepSeek V3 — استكشاف"),
-    ("deepseek/deepseek-r1-zero:free",               "🆓 DeepSeek R1 — تفكير منطقي"),
-    ("nvidia/llama-3.1-nemotron-ultra-253b-v1:free", "🆓 Nemotron — تحليل عميق"),
-    ("meta-llama/llama-4-maverick:free",             "🆓 Llama 4 Maverick — بحث"),
-    ("qwen/qwen3-235b-a22b:free",                    "🆓 Qwen3 235B — نمذجة"),
+    ("openrouter/auto:free", "🆓 Auto Free — استكشاف"),
+    ("openrouter/auto:free", "🆓 Auto Free — نمذجة"),
+    ("openrouter/auto:free", "🆓 Auto Free — تحليل"),
+    ("openrouter/auto:free", "🆓 Auto Free — بحث"),
+    ("openrouter/auto:free", "🆓 Auto Free — تقييم"),
 ]
 def run_auto_research(goal, target_result, room_context, max_rounds):
     api_key = st.secrets.get("OPENROUTER_API_KEY",
@@ -124,41 +124,22 @@ def evaluate_idea_parallel(idea, room_context):
     }
 
     judges = [
-        {
-            "model": "deepseek/deepseek-chat-v3-0324:free",
-            "role": "القاضي الأول — خبير الجدوى التقنية",
-            "prompt": f"""أنت خبير تقني. قيّم هذه الفكرة من ناحية الجدوى التقنية فقط.
-الفكرة: {idea}
-أعطِ:
-- تقييم الجدوى: X/10
-- هل ممكنة تقنياً؟
-- أكبر تحدٍّ تقني؟
-كن مختصراً — ٥ أسطر كحد أقصى."""
-        },
-        {
-            "model": "deepseek/deepseek-r1-zero:free",
-            "role": "القاضي الثاني — مراجع الأدبيات",
-            "prompt": f"""أنت خبير في الأدبيات العلمية. قيّم هذه الفكرة من ناحية الجدة فقط.
-الفكرة: {idea}
-أعطِ:
-- تقييم الجدة: X/10
-- هل موجودة في الأدبيات؟
-- أقرب بحث موجود؟
-كن مختصراً — ٥ أسطر كحد أقصى."""
-        },
-        {
-            "model": "meta-llama/llama-4-maverick:free",
-            "role": "القاضي الثالث — محلل الأثر",
-            "prompt": f"""أنت خبير في تقييم الأثر والتطبيق. قيّم هذه الفكرة من ناحية الأثر فقط.
-الفكرة: {idea}
-أعطِ:
-- تقييم الأثر: X/10
-- ما الفائدة الحقيقية إذا نجحت؟
-- هل السوق أو المجتمع يحتاجها؟
-كن مختصراً — ٥ أسطر كحد أقصى."""
-        },
-    ]
-
+    {
+        "model": "openrouter/auto:free",
+        "role": "القاضي الأول — خبير الجدوى التقنية",
+        "prompt": ...
+    },
+    {
+        "model": "openrouter/auto:free",
+        "role": "القاضي الثاني — مراجع الأدبيات",
+        "prompt": ...
+    },
+    {
+        "model": "openrouter/auto:free",
+        "role": "القاضي الثالث — محلل الأثر",
+        "prompt": ...
+    },
+]
     def call_judge(judge):
         try:
             response = requests.post(
@@ -234,7 +215,7 @@ def get_final_verdict(idea, judges_results, room_context):
             API_URL,
             headers=headers,
             json={
-                "model": "qwen/qwen3-235b-a22b:free",
+                "model": "openrouter/auto:free",
                 "messages": [
                     {"role": "system", "content": room_context},
                     {"role": "user", "content": prompt}
