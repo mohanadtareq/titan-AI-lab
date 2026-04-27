@@ -112,7 +112,7 @@ def ask_model(question, model, room_context, room):
             {"role": "user", "content": question}
         ]
     }
-    def evaluate_idea_parallel(idea, room_context):
+def evaluate_idea_parallel(idea, room_context):
     """لجنة تحكيم ثلاثية بالتوازي"""
     import concurrent.futures
 
