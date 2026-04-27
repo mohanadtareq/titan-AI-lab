@@ -194,23 +194,90 @@ else:
     st.info(f"ابدأ محادثتك في غرفة {room_key}")
 
 # ━━━ صندوق الإدخال ━━━
-question = st.chat_input("اكتب سؤالك البحثي...")
+# غرفة Idea Validation لها واجهة خاصة
+if room_key == "💡 Idea Validation":
+    st.divider()
+    st.markdown("### 💡 اطرح فكرتك")
+    st.caption("النماذج المجانية ستقيّمها فوراً")
 
-if question:
-    save_message(room_key, "user", question)
-    with st.chat_message("user"):
-        st.markdown(question)
-    selected_model_id = MODELS[st.session_state.selected_model]
-    with st.chat_message("assistant"):
-        with st.spinner("جاري التحليل..."):
-            answer = ask_model(
-                question, selected_model_id,
-                current["context"], room_key
-            )
-        st.caption(f"🤖 {st.session_state.selected_model}")
-        st.markdown(answer)
-    save_message(room_key, "assistant", answer, selected_model_id)
-    st.rerun()
+    idea_input = st.text_area(
+        "الفكرة:",
+        placeholder="مثال: استخدام الغرافين كمستشعر حراري في الأقمار الصناعية",
+        height=100,
+        key="idea_input"
+    )
+
+    if st.button("🔍 قيّم الفكرة", type="primary"):
+        if idea_input.strip():
+            # استخدام openrouter/auto:free تلقائياً
+            FREE_MODEL = "openrouter/auto:free"
+
+            save_message(room_key, "user", idea_input)
+
+            with st.chat_message("user"):
+                st.markdown(idea_input)
+
+            with st.chat_message("assistant"):
+                with st.spinner("🔬 النماذج المجانية تدرس الفكرة..."):
+                    api_key = st.secrets.get("OPENROUTER_API_KEY",
+                              os.getenv("OPENROUTER_API_KEY", ""))
+                    headers = {
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json"
+                    }
+                    response = requests.post(
+                        API_URL,
+                        headers=headers,
+                        json={
+                            "model": FREE_MODEL,
+                            "messages": [
+                                {"role": "system", "content": current["context"]},
+                                {"role": "user", "content": f"قيّم هذه الفكرة:\n{idea_input}"}
+                            ]
+                        },
+                        timeout=60
+                    )
+                    if response.status_code == 200:
+                        evaluation = response.json()['choices'][0]['message']['content']
+                    else:
+                        evaluation = f"❌ خطأ: {response.text[:200]}"
+
+                st.markdown(evaluation)
+
+                # استخراج الحكم وعرضه بشكل بارز
+                if "✅" in evaluation:
+                    st.success("✅ الفكرة تستحق غرفة مستقلة!")
+                elif "❌" in evaluation:
+                    st.error("❌ الفكرة غير مناسبة حالياً")
+                elif "⏳" in evaluation:
+                    st.warning("⏳ فكرة واعدة — تحتاج مزيداً من البحث")
+                elif "🔮" in evaluation:
+                    st.info("🔮 فكرة مستقبلية — احتفظ بها")
+
+            save_message(room_key, "assistant", evaluation, FREE_MODEL)
+            st.rerun()
+        else:
+            st.warning("اكتب فكرتك أولاً")
+
+else:
+    # الغرف الأخرى — صندوق الإدخال العادي
+    question = st.chat_input("اكتب سؤالك البحثي...")
+
+    if question:
+        save_message(room_key, "user", question)
+        with st.chat_message("user"):
+            st.markdown(question)
+        selected_model_id = MODELS[st.session_state.selected_model]
+        with st.chat_message("assistant"):
+            with st.spinner("جاري التحليل..."):
+                answer = ask_model(
+                    question, selected_model_id,
+                    current["context"], room_key
+                )
+            st.caption(f"🤖 {st.session_state.selected_model}")
+            st.markdown(answer)
+        save_message(room_key, "assistant", answer, selected_model_id)
+        st.rerun()
 
 # تأكد من تحديث البيانات عند كل تغيير
 if "last_room" not in st.session_state:

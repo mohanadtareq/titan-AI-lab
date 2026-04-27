@@ -259,6 +259,44 @@ Our solution:
     """,
     "color": "#bf7fff"
 },
+"💡 Idea Validation": {
+    "name": "Idea Validation Room",
+    "description": "غرفة تصفية الأفكار — هل تستحق التطوير؟",
+    "context": """
+RESEARCH ROOM: Idea Validation
+Purpose: Fast critical evaluation of new ideas
+
+For EVERY idea submitted, evaluate these 5 dimensions:
+
+1. FEASIBILITY (1-10): هل ممكنة علمياً وتقنياً؟
+2. NOVELTY (1-10): هل هي جديدة أم موجودة؟
+3. IMPACT (1-10): حجم الفائدة إذا نجحت؟
+4. EFFORT (1-10): الوقت والموارد المطلوبة؟ (10=سهل)
+5. SCORE: المتوسط الإجمالي
+
+VERDICT (اختر واحداً فقط):
+✅ تستحق غرفة مستقلة
+⏳ واعدة لكن تحتاج مزيداً من البحث  
+❌ موجودة مسبقاً أو غير عملية
+🔮 فكرة مستقبلية — احتفظ بها للاحقاً
+
+FORMAT your response EXACTLY like this:
+━━━ تقييم الفكرة ━━━
+📋 الفكرة: [اسم مختصر]
+1️⃣ الجدوى: X/10
+2️⃣ الجدة: X/10
+3️⃣ الأثر: X/10
+4️⃣ السهولة: X/10
+⭐ النتيجة: X/10
+━━━ الحكم ━━━
+[VERDICT]
+━━━ التبرير ━━━
+[3 أسطر فقط — مختصر وحاد]
+━━━ التوصية ━━━
+[ماذا تفعل بهذه الفكرة؟]
+    """,
+    "color": "#ffd700"
+},
     "➕ غرفة جديدة": {
         "name": "New Research Room",
         "description": "أضف مشروعاً بحثياً جديداً",
