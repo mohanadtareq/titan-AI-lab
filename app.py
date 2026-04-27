@@ -112,6 +112,142 @@ def ask_model(question, model, room_context, room):
             {"role": "user", "content": question}
         ]
     }
+    def evaluate_idea_parallel(idea, room_context):
+    """لجنة تحكيم ثلاثية بالتوازي"""
+    import concurrent.futures
+
+    api_key = st.secrets.get("OPENROUTER_API_KEY",
+              os.getenv("OPENROUTER_API_KEY", ""))
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    judges = [
+        {
+            "model": "deepseek/deepseek-chat-v3-0324:free",
+            "role": "القاضي الأول — خبير الجدوى التقنية",
+            "prompt": f"""أنت خبير تقني. قيّم هذه الفكرة من ناحية الجدوى التقنية فقط.
+الفكرة: {idea}
+أعطِ:
+- تقييم الجدوى: X/10
+- هل ممكنة تقنياً؟
+- أكبر تحدٍّ تقني؟
+كن مختصراً — ٥ أسطر كحد أقصى."""
+        },
+        {
+            "model": "deepseek/deepseek-r1-zero:free",
+            "role": "القاضي الثاني — مراجع الأدبيات",
+            "prompt": f"""أنت خبير في الأدبيات العلمية. قيّم هذه الفكرة من ناحية الجدة فقط.
+الفكرة: {idea}
+أعطِ:
+- تقييم الجدة: X/10
+- هل موجودة في الأدبيات؟
+- أقرب بحث موجود؟
+كن مختصراً — ٥ أسطر كحد أقصى."""
+        },
+        {
+            "model": "meta-llama/llama-4-maverick:free",
+            "role": "القاضي الثالث — محلل الأثر",
+            "prompt": f"""أنت خبير في تقييم الأثر والتطبيق. قيّم هذه الفكرة من ناحية الأثر فقط.
+الفكرة: {idea}
+أعطِ:
+- تقييم الأثر: X/10
+- ما الفائدة الحقيقية إذا نجحت؟
+- هل السوق أو المجتمع يحتاجها؟
+كن مختصراً — ٥ أسطر كحد أقصى."""
+        },
+    ]
+
+    def call_judge(judge):
+        try:
+            response = requests.post(
+                API_URL,
+                headers=headers,
+                json={
+                    "model": judge["model"],
+                    "messages": [
+                        {"role": "system", "content": room_context},
+                        {"role": "user", "content": judge["prompt"]}
+                    ]
+                },
+                timeout=60
+            )
+            if response.status_code == 200:
+                return judge["role"], response.json()['choices'][0]['message']['content']
+            else:
+                return judge["role"], f"❌ خطأ {response.status_code}"
+        except Exception as e:
+            return judge["role"], f"❌ انتهت المهلة: {str(e)[:50]}"
+
+    # استدعاء الثلاثة بالتوازي
+    results = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {executor.submit(call_judge, j): j for j in judges}
+        for future in concurrent.futures.as_completed(futures):
+            role, result = future.result()
+            results[role] = result
+
+    return results
+
+
+def get_final_verdict(idea, judges_results, room_context):
+    """القاضي الرابع — الحكم النهائي"""
+    api_key = st.secrets.get("OPENROUTER_API_KEY",
+              os.getenv("OPENROUTER_API_KEY", ""))
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    judges_summary = "\n\n".join([
+        f"{role}:\n{result}"
+        for role, result in judges_results.items()
+    ])
+
+    prompt = f"""
+أنت القاضي الرئيسي. لديك آراء ٣ قضاة حول هذه الفكرة:
+
+الفكرة: {idea}
+
+آراء القضاة:
+{judges_summary}
+
+بناءً على هذه الآراء، أصدر حكماً نهائياً بهذا الشكل بالضبط:
+
+━━━ حكم لجنة التحكيم ━━━
+📋 الفكرة: [اسم مختصر]
+1️⃣ الجدوى التقنية: X/10
+2️⃣ الجدة والأصالة: X/10
+3️⃣ الأثر والتطبيق: X/10
+⭐ النتيجة الإجمالية: X/10
+━━━ الحكم النهائي ━━━
+[✅ أو ⏳ أو ❌ أو 🔮] [جملة واحدة]
+━━━ التبرير ━━━
+[سطران فقط — موضوعي وحاد]
+━━━ التوصية ━━━
+[ماذا تفعل بهذه الفكرة؟ سطر واحد]
+"""
+
+    try:
+        response = requests.post(
+            API_URL,
+            headers=headers,
+            json={
+                "model": "qwen/qwen3-235b-a22b:free",
+                "messages": [
+                    {"role": "system", "content": room_context},
+                    {"role": "user", "content": prompt}
+                ]
+            },
+            timeout=60
+        )
+        if response.status_code == 200:
+            return response.json()['choices'][0]['message']['content']
+        else:
+            return f"❌ خطأ في الحكم النهائي: {response.text[:200]}"
+    except Exception as e:
+        return f"❌ انتهت المهلة: {str(e)[:100]}"
     response = requests.post(API_URL, headers=headers, json=data)
     if response.status_code == 200:
         return response.json()['choices'][0]['message']['content']
@@ -197,8 +333,8 @@ else:
 # غرفة Idea Validation لها واجهة خاصة
 if room_key == "💡 Idea Validation":
     st.divider()
-    st.markdown("### 💡 اطرح فكرتك")
-    st.caption("النماذج المجانية ستقيّمها فوراً")
+    st.markdown("### 💡 اطرح فكرتك على لجنة التحكيم")
+    st.caption("٣ نماذج مجانية تقيّم بالتوازي ثم قاضٍ رابع يصدر الحكم")
 
     idea_input = st.text_area(
         "الفكرة:",
@@ -207,57 +343,98 @@ if room_key == "💡 Idea Validation":
         key="idea_input"
     )
 
-    if st.button("🔍 قيّم الفكرة", type="primary"):
+    if st.button("⚖️ ابدأ جلسة التحكيم", type="primary"):
         if idea_input.strip():
-            # استخدام openrouter/auto:free تلقائياً
-            FREE_MODEL = "openrouter/auto:free"
-
             save_message(room_key, "user", idea_input)
 
             with st.chat_message("user"):
-                st.markdown(idea_input)
+                st.markdown(f"**الفكرة المطروحة:** {idea_input}")
+
+            # المرحلة الأولى — القضاة الثلاثة بالتوازي
+            st.markdown("#### 🏛️ المرحلة الأولى — لجنة القضاة")
+            with st.spinner("القضاة الثلاثة يدرسون الفكرة بالتوازي..."):
+                judges_results = evaluate_idea_parallel(
+                    idea_input, current["context"]
+                )
+
+            # عرض آراء القضاة
+            cols = st.columns(3)
+            for i, (role, result) in enumerate(judges_results.items()):
+                with cols[i]:
+                    with st.expander(f"📋 {role}", expanded=True):
+                        st.markdown(result)
+
+            # المرحلة الثانية — الحكم النهائي المجاني
+            st.markdown("#### ⚖️ المرحلة الثانية — الحكم النهائي")
+            with st.spinner("القاضي الرئيسي يجمع الآراء..."):
+                verdict = get_final_verdict(
+                    idea_input, judges_results, current["context"]
+                )
 
             with st.chat_message("assistant"):
-                with st.spinner("🔬 النماذج المجانية تدرس الفكرة..."):
-                    api_key = st.secrets.get("OPENROUTER_API_KEY",
-                              os.getenv("OPENROUTER_API_KEY", ""))
-                    headers = {
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json"
-                    }
-                    response = requests.post(
-                        API_URL,
-                        headers=headers,
-                        json={
-                            "model": FREE_MODEL,
-                            "messages": [
-                                {"role": "system", "content": current["context"]},
-                                {"role": "user", "content": f"قيّم هذه الفكرة:\n{idea_input}"}
-                            ]
-                        },
-                        timeout=60
-                    )
-                    if response.status_code == 200:
-                        evaluation = response.json()['choices'][0]['message']['content']
-                    else:
-                        evaluation = f"❌ خطأ: {response.text[:200]}"
+                st.markdown(verdict)
 
-                st.markdown(evaluation)
-
-                # استخراج الحكم وعرضه بشكل بارز
-                if "✅" in evaluation:
-                    st.success("✅ الفكرة تستحق غرفة مستقلة!")
-                elif "❌" in evaluation:
-                    st.error("❌ الفكرة غير مناسبة حالياً")
-                elif "⏳" in evaluation:
-                    st.warning("⏳ فكرة واعدة — تحتاج مزيداً من البحث")
-                elif "🔮" in evaluation:
+                if "✅" in verdict:
+                    st.success("✅ الفكرة اجتازت لجنة التحكيم!")
+                elif "❌" in verdict:
+                    st.error("❌ الفكرة لم تجتز لجنة التحكيم")
+                elif "⏳" in verdict:
+                    st.warning("⏳ فكرة واعدة — تحتاج تطوير")
+                elif "🔮" in verdict:
                     st.info("🔮 فكرة مستقبلية — احتفظ بها")
 
-            save_message(room_key, "assistant", evaluation, FREE_MODEL)
+            # حفظ الحكم
+            full_result = f"آراء القضاة:\n{judges_results}\n\nالحكم النهائي:\n{verdict}"
+            save_message(room_key, "assistant", full_result, "jury-panel:free")
+
+            # زر المراجعة المدفوعة
+            st.divider()
+            st.markdown("#### 🔍 مراجعة إضافية بنموذج قوي (اختياري)")
+            st.caption("ادفع فقط للأفكار التي تستحق — رأي Claude أو MiMo")
+
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button("🤖 اعرض على Claude", type="secondary"):
+                    st.session_state.review_idea = idea_input
+                    st.session_state.review_verdict = verdict
+                    st.session_state.show_paid_review = "claude"
+                    st.rerun()
+            with col_b:
+                if st.button("🤖 اعرض على MiMo", type="secondary"):
+                    st.session_state.review_idea = idea_input
+                    st.session_state.review_verdict = verdict
+                    st.session_state.show_paid_review = "mimo"
+                    st.rerun()
+
             st.rerun()
         else:
             st.warning("اكتب فكرتك أولاً")
+
+    # عرض المراجعة المدفوعة إذا طُلبت
+    if st.session_state.get("show_paid_review"):
+        model_choice = st.session_state.show_paid_review
+        model_id = "anthropic/claude-sonnet-4.6" if model_choice == "claude" else "xiaomi/mimo-v2-pro"
+        model_name = "Claude Sonnet 4.6" if model_choice == "claude" else "MiMo V2 Pro"
+
+        st.markdown(f"#### 💰 رأي {model_name}")
+        with st.spinner(f"{model_name} يراجع حكم اللجنة..."):
+            paid_review = ask_model(
+                f"""لجنة تحكيم مجانية قيّمت هذه الفكرة:
+الفكرة: {st.session_state.review_idea}
+حكم اللجنة: {st.session_state.review_verdict}
+
+هل توافق على حكم اللجنة؟ أضف رأيك النقدي في ٥ أسطر فقط.""",
+                model_id,
+                current["context"],
+                room_key
+            )
+
+        with st.chat_message("assistant"):
+            st.markdown(f"**{model_name}:** {paid_review}")
+
+        save_message(room_key, "assistant", paid_review, model_id)
+        st.session_state.show_paid_review = None
+        st.rerun()
 
 else:
     # الغرف الأخرى — صندوق الإدخال العادي

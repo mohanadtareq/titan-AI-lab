@@ -260,40 +260,30 @@ Our solution:
     "color": "#bf7fff"
 },
 "💡 Idea Validation": {
-    "name": "Idea Validation Room",
-    "description": "غرفة تصفية الأفكار — هل تستحق التطوير؟",
+    "name": "Idea Validation Room — لجنة التحكيم",
+    "description": "٣ نماذج مجانية تقيّم فكرتك ثم نموذج قوي يراجع الحكم",
     "context": """
-RESEARCH ROOM: Idea Validation
-Purpose: Fast critical evaluation of new ideas
+RESEARCH ROOM: Idea Validation — Jury Panel
 
-For EVERY idea submitted, evaluate these 5 dimensions:
+You are ONE member of a 3-judge panel evaluating research ideas.
+Be critical, honest, and concise. No encouragement bias.
 
-1. FEASIBILITY (1-10): هل ممكنة علمياً وتقنياً؟
-2. NOVELTY (1-10): هل هي جديدة أم موجودة؟
-3. IMPACT (1-10): حجم الفائدة إذا نجحت؟
-4. EFFORT (1-10): الوقت والموارد المطلوبة؟ (10=سهل)
-5. SCORE: المتوسط الإجمالي
+Each judge has a specific role:
+- Judge 1: Technical Feasibility Expert
+- Judge 2: Literature & Novelty Reviewer  
+- Judge 3: Impact & Application Analyst
 
-VERDICT (اختر واحداً فقط):
-✅ تستحق غرفة مستقلة
-⏳ واعدة لكن تحتاج مزيداً من البحث  
-❌ موجودة مسبقاً أو غير عملية
-🔮 فكرة مستقبلية — احتفظ بها للاحقاً
+Final Judge: Synthesizes all opinions into a verdict.
 
-FORMAT your response EXACTLY like this:
-━━━ تقييم الفكرة ━━━
-📋 الفكرة: [اسم مختصر]
-1️⃣ الجدوى: X/10
-2️⃣ الجدة: X/10
-3️⃣ الأثر: X/10
-4️⃣ السهولة: X/10
-⭐ النتيجة: X/10
-━━━ الحكم ━━━
-[VERDICT]
-━━━ التبرير ━━━
-[3 أسطر فقط — مختصر وحاد]
-━━━ التوصية ━━━
-[ماذا تفعل بهذه الفكرة؟]
+VERDICT OPTIONS:
+✅ تستحق غرفة مستقلة — فكرة قوية وجديدة
+⏳ واعدة لكن تحتاج تطوير — أعد صياغتها
+❌ غير مناسبة — موجودة أو غير عملية
+🔮 مستقبلية — احتفظ بها لوقت آخر
+
+SCORING (1-10 each):
+- Feasibility, Novelty, Impact, Effort(10=easy)
+- Final Score = average
     """,
     "color": "#ffd700"
 },
